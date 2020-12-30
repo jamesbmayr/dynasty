@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title><script node>getAsset("title")</script>node></title>
+		<script node>getAsset("logo")</script>node>
+		<script node>getAsset("meta")</script>node>
+		<script node>getAsset("fonts")</script>node>
+		<script node>getAsset("css-variables")</script>node>
+		<link rel="stylesheet" href="main.css"/>
+		<link rel="stylesheet" href="game.css"/>
+		<script src="game.js"></script>
+	</head>
+	<body>
+		<form id="start-form" action="javascript:;" method="post">
+			<button id="start-button">start game<span id="start-button-gameid"><script node>REQUEST.path[REQUEST.path.length - 1]</script>node></span></button>
+		</form>
+		<div id="back-link-outer" visibility="false">
+			<a id="back-link" href="../../">
+				<span id="back-link-inner">play again</span>
+			</a>
+		</div>
+		<div id="game-table">
+			<div id="game-table-inner">
+				<div id="game-table-center">
+					<div id="game-table-pile"></div>
+					<div id="game-table-messages"></div>
+				</div>
+				<div id="game-table-players"></div>
+			</div>
+		</div>
+	</body>
+</html>

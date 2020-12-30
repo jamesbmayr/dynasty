@@ -1,0 +1,406 @@
+/*** start ***/
+	#start-form {
+		z-index: 100;
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		transform: translateX(-50%) translateY(calc(-50% - var(--medium-gap-size)));
+		height: calc(2 * (var(--card-size) + 2 * var(--small-gap-size)));
+		width: calc(2 * (var(--card-size) + 2 * var(--small-gap-size)));
+		transition: calc(var(--transition-time) * 3);
+	}
+
+	/* button */
+		#start-button {
+			position: absolute;
+			top: 50%;
+			left: 50%;
+			transform: translateX(-50%) translateY(-50%);
+			height: 100%;
+			width: 100%;
+			margin: 0;
+			font-size: var(--medium-font-size);
+			border-radius: 100%;
+			transition: var(--transition-time);
+		}
+
+		#start-button-gameid {
+			margin-top: var(--large-gap-size);
+			display: block;
+			text-align: center;
+			font-size: var(--large-font-size);
+			text-transform: uppercase;
+		}
+
+/*** finish ***/
+	#back-link-outer {
+		z-index: 100;
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		transform: translateX(-50%) translateY(calc(-50% - var(--medium-gap-size)));
+		height: calc(2 * (var(--card-size) + 2 * var(--small-gap-size)));
+		width: calc(2 * (var(--card-size) + 2 * var(--small-gap-size)));
+		transition: calc(var(--transition-time) * 3);
+	}
+
+	#back-link {
+		height: calc(2 * (var(--card-size) + 2 * var(--small-gap-size)));
+		width: calc(2 * (var(--card-size) + 2 * var(--small-gap-size)));
+		background-color: var(--medium-gray);
+		border-radius: 100%;
+		text-align: center;
+		box-shadow: 0 0 var(--shadow-size) var(--medium-gray);
+	}
+
+	#back-link:hover, #back-link:focus {
+		box-shadow: 0 0 var(--shadow-size) var(--dark-gray);
+		text-shadow: none;
+	}
+
+	/* span */
+		#back-link-inner {
+			display: block;
+			position: absolute;
+			top: 50%;
+			left: 50%;
+			transform: translateX(-50%) translateY(-50%);
+			margin: 0;
+			pointer-events: none;
+			font-size: var(--large-font-size);
+			color: var(--light-gray);
+		}
+
+/*** game-table ***/
+	#game-table {
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 100%;
+		overflow: scroll;
+	}
+
+	/* inner */
+		@media screen and (max-width: 800px) {
+			#game-table-inner {
+				position: absolute;
+			}
+		}
+
+		#game-table-inner {
+			height: 100vh;
+			min-height: calc(var(--card-size) * 8);
+			width: calc(var(--card-size) * 8);
+			min-width: 100vw;
+		}
+
+	/* center */
+		#game-table-center {
+			position: absolute;
+			top: 50%;
+			left: 50%;
+			transform: translateX(-50%) translateY(-50%);
+			text-align: center;
+			height: calc(var(--card-size) * 4);
+			width: calc(var(--card-size) * 4);
+			z-index: 1;
+		}
+
+	/* pile */
+		#game-table-pile {
+			position: absolute;
+			top: 0;
+			left: 0;
+			height: calc(var(--card-size) * 2);
+			width: calc(var(--card-size) * 4);
+			z-index: 1;
+		}
+
+		#game-table-pile .card {
+			position: absolute;
+			top: 50%;
+			left: 50%;
+			transform: translateX(-50%) translateY(-50%);
+			height: var(--card-size);
+			width: calc(var(--card-size) / 4 * 3);
+			margin: var(--small-gap-size);
+			background-repeat: no-repeat;
+			background-size: cover;
+			background-position: center;
+			box-shadow: 0 0 var(--shadow-size) var(--dark-gray);
+			border: var(--border-size) solid var(--light-gray);
+			transition: var(--transition-time);
+		}
+
+		#game-table-pile .card[removing=true] {
+			opacity: 0;
+		}
+
+	/* messages */
+		#game-table-messages {
+			position: absolute;
+			left: 0;
+			bottom: 0;
+			width: calc(var(--card-size) * 4);
+			height: calc(var(--card-size) * 2);
+			overflow-x: hidden;
+			overflow-y: scroll;
+			text-align: center;
+			z-index: 1;
+			scroll-behavior: smooth;
+		}
+
+		#game-table-messages .message {
+			width: 100%;
+			text-align: center;
+			font-size: var(--small-font-size);
+			color: var(--dark-gray);
+			font-family: var(--font-family);
+			margin: var(--small-gap-size) 0;
+			opacity: 0.25;
+			user-select: none;
+			-webkit-user-select: none;
+			-moz-user-select: none;
+			-ms-user-select: none;
+			-o-user-select: none;
+			z-index: 1;
+			pointer-events: none;
+		}
+
+		#game-table-messages .message:nth-child(1) {
+			opacity: 1;
+		}
+
+		#game-table-messages .message:nth-child(2) {
+			opacity: 0.75;
+		}
+
+		#game-table-messages .message:nth-child(3) {
+			opacity: 0.5;
+		}
+
+	/* players */
+		#game-table-players {
+			position: absolute;
+			top: 50%;
+			left: 50%;
+			transform: translateX(-50%) translateY(-50%);
+			height: 100%;
+			width: 100%;
+		}
+
+		/* player */
+			.player {
+				position: absolute;
+				left: 50%;
+				height: calc(var(--card-size) + 2 * var(--small-gap-size) + var(--medium-font-size) + 2 * var(--small-gap-size));
+				transform-origin: center center;
+				border: var(--border-size) solid var(--medium-gray);
+				border-radius: var(--border-radius);
+				background-color: var(--medium-gray);
+				box-shadow: 0 0 var(--shadow-size) var(--dark-gray);
+				transition: var(--transition-time);
+			}
+
+			.player:not(.self) {
+				overflow: hidden;
+				top: 50%;
+				width: calc(3 * (var(--card-size) + 2 * var(--small-gap-size)));
+			}
+
+			.player.self {
+				z-index: 100;
+				bottom: 0;
+				left: 0;
+				width: calc(100% - 2 * var(--border-size));
+				transform: none !important;
+				border-radius: var(--border-radius) var(--border-radius) 0 0;
+			}
+
+			.player[isTurn=true], .player[isTaxation=true] {
+				border-color: var(--dark-gray);
+				background-color: var(--dark-gray);
+				box-shadow: 0 0 0 var(--border-size) var(--dark-gray) !important;
+			}
+
+			.player[isDone=true] {
+				opacity: 0.5;
+			}
+
+		/* nameplate */
+			.player-name {
+				height: calc(var(--medium-font-size) + 2 * var(--small-gap-size));
+				margin: 0;
+				border-radius: 0 0 var(--border-radius) var(--border-radius);
+				font-size: var(--medium-font-size);
+				cursor: default;
+				user-select: none;
+				-webkit-user-select: none;
+				-moz-user-select: none;
+				-ms-user-select: none;
+				-o-user-select: none;
+				transition: var(--transition-time);
+			}
+
+			.player[isTurn=true] .player-name, .player[isTaxation=true] .player-name {
+				background-color: var(--dark-gray);
+			}
+
+			.player-name:hover, .player-name:focus {
+				box-shadow: none;
+			}
+
+		/* cards */
+			.player-cards-outer {
+				height: calc(var(--card-size) + 2 * var(--small-gap-size));
+				width: 100%;
+				overflow: hidden;
+				border-radius: var(--border-radius);
+				box-shadow: 0 0 var(--shadow-size) var(--medium-gray) inset;
+				background-color: var(--light-gray);
+			}
+
+			.player-cards-inner {
+				min-width: 100%;
+				width: auto;
+				height: calc(var(--card-size) + 2 * var(--small-gap-size));
+				overflow-x: scroll;
+				overflow-y: hidden;
+				white-space: nowrap;
+				background-color: var(--light-gray);
+				border-radius: var(--border-radius);
+			}
+
+			.player .card {
+				display: inline;
+				height: var(--card-size);
+				width: calc(var(--card-size) / 4 * 3);
+				margin: var(--small-gap-size);
+				background-repeat: no-repeat;
+				background-size: cover;
+				background-position: center;
+				box-shadow: 0 0 var(--shadow-size) var(--medium-gray);
+				border: var(--border-size) solid var(--light-gray);
+				transition: var(--transition-time);
+				pointer-events: none;
+			}
+
+			.player .card[moving=true] {
+				position: absolute;
+				top: 50%;
+				left: 50%;
+			}
+
+			.player .card:hover, .player.card:focus {
+				box-shadow: 0 0 var(--shadow-size) var(--dark-gray);
+			}
+
+			.player[isTurn=true] .card, .player[isTaxation=true] .card {
+				pointer-events: all;
+			}
+
+			.player .card[selected=true] {
+				border-color: var(--dark-gray);
+				box-shadow: 0 0 0 var(--border-size) var(--dark-gray) !important;
+			}
+
+			.player:not(.self) .card {
+				background-color: var(--medium-gray);
+				pointer-events: none !important;
+			}
+
+			.player:not(.self) .card:not(:last-child) {
+				cursor: default;
+				margin-right: calc(var(--card-size) / -2);
+			}
+
+		/* play / pass */
+			.player-button {
+				position: absolute;
+				bottom: calc(var(--card-size) * 4 / 3);
+				left: 50%;
+				width: calc(var(--card-size));
+				height: calc(var(--card-size) / 4 * 3);
+				background-color: var(--dark-gray);
+				transition: var(--transition-time);
+				opacity: 1;
+				z-index: 101;
+			}
+
+			#game-table-play {
+				transform: translateX(-150%) translateY(-50%);
+			}
+
+			#game-table-pass {
+				transform: translateX(50%) translateY(-50%);
+			}
+
+			#game-table-send {
+				transform: translateX(-50%) translateY(-50%)
+			}
+
+			.player:not([isTurn=true]) #game-table-play, .player:not([isTurn=true]) #game-table-pass {
+				opacity: 0;
+				pointer-events: none;
+			}
+
+			.player:not([isTaxation=true]) #game-table-send {
+				opacity: 0;
+				pointer-events: none;
+			}
+
+/*** colors ***/
+	.card[value='1'] {
+		background-color: var(--medium-yellow);
+	}
+
+	.card[value='2'] {
+		background-color: var(--medium-green);
+	}
+
+	.card[value='3'] {
+		background-color: var(--medium-blue);
+	}
+
+	.card[value='4'] {
+		background-color: var(--medium-purple);
+	}
+
+	.card[value='5'] {
+		background-color: var(--medium-red);
+	}
+
+	.card[value='6'] {
+		background-color: var(--medium-orange);
+	}
+
+	.card[value='7'] {
+		background-color: var(--dark-yellow);
+	}
+
+	.card[value='8'] {
+		background-color: var(--dark-green);
+	}
+
+	.card[value='9'] {
+		background-color: var(--dark-blue);
+	}
+
+	.card[value='10'] {
+		background-color: var(--dark-purple);
+	}
+
+	.card[value='11'] {
+		background-color: var(--dark-red);
+	}
+
+	.card[value='12'] {
+		background-color: var(--dark-orange);
+	}
+
+	.card[value='?'] {
+		background-color: var(--light-gray);
+		color: var(--dark-gray);
+	}
+
