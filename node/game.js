@@ -474,32 +474,37 @@
 							return
 					}
 
-				// not matching values
-					var values = []
+				// get values
+					var values = {}
 					for (var i in selectedCards) {
-						if (!values.includes(selectedCards[i].value)) {
-							values.push(selectedCards[i].value)
+						var stringValue = String(selectedCards[i].value)
+						if (!values[stringValue]) {
+							values[stringValue] = 1
+						}
+						else {
+							values[stringValue]++
 						}
 					}
-					if (!values.length || values.length > 2 || (values.length > 1 && !(values[0] == "?" || values[1] == "?"))) {
+
+				// too many / few
+					var valueKeys = Object.keys(values)
+					if (!valueKeys.length || valueKeys.length > 2 || (valueKeys.length == 2 && !values["?"])) {
 						callback({success: false, message: "cards do not match", recipients: [REQUEST.session.id]})
 						return
 					}
 
+				// realvalue
+					var realValue = valueKeys.find(function(v) {
+						return v !== "?"
+					}) || 13
+
 				// wilds
-					if (values.length > 1) {
-						realValue = (values[0] == "?") ? values[1] : values[0]
+					if (values["?"]) {
 						for (var i in selectedCards) {
 							if (selectedCards[i].value == "?") {
 								selectedCards[i].tempValue = realValue	
 							}
 						}
-					}
-					else if (values[0] == "?") {
-						realValue = 13
-					}
-					else {
-						realValue = values[0]
 					}
 
 				// values not lower
@@ -534,9 +539,15 @@
 						game = moveCard(game, {cardId: selectedCards[i].id, fromId: thisPlayerId, toId: "pile"})
 					}
 
+				// generate message
+					var message = valueKeys.map(function(k) {
+						return "[" + k + "] x" + values[k]
+					}).join(" and ")
+
 				// set last played
+					game.players[thisPlayerId].inPlay = true
 					game.status.lastPlayed = thisPlayerId
-					game.status.messages.push({id: CORE.generateRandom(), message: game.players[game.status.lastPlayed].name + " plays " + selectedCards.map(function(c) { return c.value }).join(", ")})
+					game.status.messages.push({id: CORE.generateRandom(), message: game.players[game.status.lastPlayed].name + " plays " + message})
 
 				// out of cards?
 					if (!game.players[thisPlayerId].cards.length) {
@@ -748,6 +759,16 @@
 					var position = game.players[game.status.currentTurn].position
 					var playerIds = Object.keys(game.players)
 
+				// 1+ player has not passed?
+					var inPlay = playerIds.filter(function(i) {
+						return game.players[i].inPlay
+					}) || []
+
+				// no more in play
+					if (!inPlay.length) {
+						return setNextRound(game)
+					}
+
 				// find next player
 					var nextPlayerId = null
 					while (!nextPlayerId) {
@@ -767,13 +788,8 @@
 								return game.players[p].position == position
 							})
 
-						// already passed / finished?
-							if (!game.players[nextPlayerId].inPlay) {
-								nextPlayerId = null
-							}
-
-						// next player == lastPlayed?
-							if (nextPlayerId == game.status.lastPlayed) {
+						// already finished?
+							if (!game.players[nextPlayerId].cards.length) {
 								nextPlayerId = null
 							}
 					}
@@ -808,7 +824,7 @@
 					}
 
 				// all players waiting?
-					if (game.status.waiting.length == Object.keys(game.players).length) {
+					if (game.status.waiting.length == Object.keys(game.players).length - 1) {
 						return setNextGame(game)
 					}
 
@@ -826,15 +842,13 @@
 					game.status.lastPlayed = null
 					game.status.messages.push({id: CORE.generateRandom(), message: game.players[game.status.currentTurn].name + " played last"})
 
-				// lastPlayed player waiting?
-					if (!game.players[game.status.currentTurn].inPlay) {
+				// lastPlayed player finished?
+					if (!game.players[game.status.currentTurn].cards.length) {
 						return setNextPlayer(game)
-					}
-					else {
-						game.status.messages.push({id: CORE.generateRandom(), message: game.players[game.status.currentTurn].name + "'s turn"})
 					}
 
 				// otherwise
+					game.status.messages.push({id: CORE.generateRandom(), message: game.players[game.status.currentTurn].name + "'s turn"})
 					return game
 			}
 			catch (error) {
@@ -846,6 +860,27 @@
 		module.exports.setNextGame = setNextGame
 		function setNextGame(game) {
 			try {
+				// move pile to discard
+					if (game.pile.length) {
+						for (var i in game.pile) {
+							game = moveCard(game, {cardId: game.pile[i].id, fromId: "pile", toId: "discard"})
+						}
+					}
+
+				// pity the straggler
+					for (var i in game.players) {
+						if (game.players[i].cards.length) {
+							// move cards to discard
+								for (var j in game.players[i].cards) {
+									game = moveCard(game, {cardId: game.players[i].cards[j].id, fromId: i, toId: "discard"})
+								}
+
+							// move to waiting
+								game.status.waiting.push(i)
+								game.status.messages.push({id: CORE.generateRandom(), message: "round ends"})
+						}
+					}
+
 				// move discard to draw
 					if (game.discard.length) {
 						var cloneCards = CORE.sortRandom(game.discard)

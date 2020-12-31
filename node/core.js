@@ -379,8 +379,8 @@
 								cookieLength: 1000 * 60 * 60 * 24 * 7,
 								delayTime: 1000 * 5,
 								minimumPlayers: 4,
-								maximumPlayers: 8,
-								monarchyToWin: 3,
+								maximumPlayers: 12,
+								monarchyToWin: 5,
 								cardCounts: {
 									"?": 2,
 									"1": 1,

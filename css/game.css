@@ -1,3 +1,23 @@
+/*** mobile ***/
+	@media screen and (max-width: 950px) {
+		:root {
+			--desktop-modifier: 0;
+		}
+	}
+
+	@media screen and (min-width: 951px) and (max-width: 1250px) {
+		:root {
+			--desktop-modifier: 1;
+		}
+	}
+
+	@media screen and (min-width: 1251px) {
+		:root {
+			--desktop-modifier: 2;
+		}
+	}
+
+
 /*** start ***/
 	#start-form {
 		z-index: 100;
@@ -292,6 +312,15 @@
 				left: 50%;
 			}
 
+			#game-table[taxation=true] .player .card[fadedOut=true] {
+				opacity: 0;
+			}
+
+			#game-table[taxation=true] .player .card[fadeIn=true] {
+				opacity: 1 !important;
+				transition: calc(var(--transition-time) * 3);
+			}
+
 			.player .card:hover, .player.card:focus {
 				box-shadow: 0 0 var(--shadow-size) var(--dark-gray);
 			}
@@ -315,7 +344,7 @@
 				margin-right: calc(var(--card-size) / -2);
 			}
 
-		/* play / pass */
+		/* play / send / pass */
 			.player-button {
 				position: absolute;
 				bottom: calc(var(--card-size) * 4 / 3);
@@ -336,11 +365,17 @@
 				transform: translateX(50%) translateY(-50%);
 			}
 
+			#game-table-pass[unavailable=true] {
+				pointer-events: none;
+				opacity: 0.5;
+				cursor: not-allowed;
+			}
+
 			#game-table-send {
 				transform: translateX(-50%) translateY(-50%)
 			}
 
-			.player:not([isTurn=true]) #game-table-play, .player:not([isTurn=true]) #game-table-pass {
+			#game-table[taxation=true] #game-table-play, #game-table[taxation=true] #game-table-pass, .player:not([isTurn=true]) #game-table-play, .player:not([isTurn=true]) #game-table-pass {
 				opacity: 0;
 				pointer-events: none;
 			}
@@ -352,51 +387,63 @@
 
 /*** colors ***/
 	.card[value='1'] {
-		background-color: var(--medium-yellow);
+		background-color: #F5F2DC;
+		color: var(--dark-gray);
 	}
 
 	.card[value='2'] {
-		background-color: var(--medium-green);
+		background-color: #209BE3;
+		color: var(--light-gray);
 	}
 
 	.card[value='3'] {
-		background-color: var(--medium-blue);
+		background-color: #66d91e;
+		color: var(--dark-gray);
 	}
 
 	.card[value='4'] {
-		background-color: var(--medium-purple);
+		background-color: #d91e66;
+		color: var(--light-gray);
 	}
 
 	.card[value='5'] {
-		background-color: var(--medium-red);
+		background-color: #0A1666;
+		color: var(--light-gray);
 	}
 
 	.card[value='6'] {
-		background-color: var(--medium-orange);
+		background-color: #FF9C33;
+		color: var(--dark-gray);
 	}
 
 	.card[value='7'] {
-		background-color: var(--dark-yellow);
+		background-color: #FCFC35;
+		color: var(--dark-gray);
 	}
 
 	.card[value='8'] {
-		background-color: var(--dark-green);
+		background-color: #4016C9;
+		color: var(--light-gray);
 	}
 
 	.card[value='9'] {
-		background-color: var(--dark-blue);
+		background-color: #D63306;
+		color: var(--light-gray);
 	}
 
 	.card[value='10'] {
-		background-color: var(--dark-purple);
+		background-color: #8fb3b1;
+		color: var(--light-gray);
 	}
 
 	.card[value='11'] {
-		background-color: var(--dark-red);
+		background-color: #0C570C;
+		color: var(--light-gray);
 	}
 
 	.card[value='12'] {
-		background-color: var(--dark-orange);
+		background-color: #4DE9FA;
+		color: var(--dark-gray);
 	}
 
 	.card[value='?'] {

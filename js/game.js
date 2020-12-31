@@ -280,20 +280,35 @@ window.addEventListener("load", function() {
 
 							// where from
 								if (card.fromId && !["draw", "pile", "discard"].includes(card.fromId)) {
-									var previousElement = document.querySelector("#game-table-player-" + card.fromId)									
-									if (previousElement) {
-										// set starting top & left
-											var previousRect = previousElement.getBoundingClientRect()
-											var containerRect = container.getBoundingClientRect()
-											cardElement.style.top = previousRect.top + (previousRect.height / 2) - containerRect.top + "px"
-											cardElement.style.left = previousRect.left + (previousRect.width / 2) - containerRect.left + "px"
+									// to pile
+										if (card.toId && card.toId == "pile") {
+											var previousElement = document.querySelector("#game-table-player-" + card.fromId)									
+											if (previousElement) {
+												// set starting top & left
+													var previousRect = previousElement.getBoundingClientRect()
+													var containerRect = container.getBoundingClientRect()
+													cardElement.style.top = previousRect.top + (previousRect.height / 2) - containerRect.top + "px"
+													cardElement.style.left = previousRect.left + (previousRect.width / 2) - containerRect.left + "px"
 
-										// animate movement
+												// animate movement
+													setTimeout(function() {
+														cardElement.style.top = "50%"
+														cardElement.style.left = "50%"
+													}, 100)
+											}
+										}
+
+									// to another player (taxation)
+										else {
+											cardElement.setAttribute("fadedOut", true)
 											setTimeout(function() {
-												cardElement.style.top = "50%"
-												cardElement.style.left = "50%"
+												cardElement.removeAttribute("fadedOut")
+												cardElement.setAttribute("fadeIn", true)
 											}, 100)
-									}
+											setTimeout(function() {
+												cardElement.removeAttribute("fadeIn")
+											}, 5000)
+										}
 								}
 
 							// player
@@ -322,6 +337,14 @@ window.addEventListener("load", function() {
 					// end?
 						if (status.endTime) {
 							ELEMENTS.backlink.removeAttribute("visibility")
+						}
+
+					// taxation
+						if (status.taxation) {
+							ELEMENTS.gameTable.element.setAttribute("taxation", true)
+						}
+						else {
+							ELEMENTS.gameTable.element.removeAttribute("taxation")
 						}
 
 					// pile
@@ -435,8 +458,9 @@ window.addEventListener("load", function() {
 									for (var i in players) {
 										if (i !== PLAYERID) {
 											var calculatedOffset = (players[i].position - countOffset - 1 + playerCount) % playerCount
+											var calculatedAngle = (calculatedOffset * angle) + shiftAngle
 											var playerElement = ELEMENTS.gameTable.players[players[i].id]
-												playerElement.style.transform = "translateX(-50%) translateY(-50%) rotate(" + ((calculatedOffset * angle) + shiftAngle) + "deg) translateY(calc(var(--card-size) * 3)) "
+												playerElement.style.transform = "translateX(-50%) translateY(-50%) rotate(" + calculatedAngle + "deg) translateY(calc(var(--card-size) * (3 + (var(--desktop-modifier) * " + Math.abs(180 - calculatedAngle) / 45 + "))))"
 												playerElement.style["z-index"] = calculatedOffset + 1
 										}
 									}
@@ -481,8 +505,8 @@ window.addEventListener("load", function() {
 							playerElement.removeAttribute("isTurn")
 						}
 
-					// lowlight if this player is out
-						if (!player.inPlay) {
+					// lowlight if this player is finished
+						if (!player.cards.length) {
 							playerElement.setAttribute("isDone", true)
 						}
 						else {
@@ -560,11 +584,15 @@ window.addEventListener("load", function() {
 					// already selected?
 						if (event.target.getAttribute("selected")) {
 							event.target.removeAttribute("selected")
+							if (!Array.from(ELEMENTS.gameTable.players[PLAYERID].querySelectorAll(".card[selected='true']")).length) {
+								ELEMENTS.gameTable.players[PLAYERID].querySelector("#game-table-pass").removeAttribute("unavailable")
+							}
 						}
 
 					// newly selected
 						else {
 							event.target.setAttribute("selected", true)
+							ELEMENTS.gameTable.players[PLAYERID].querySelector("#game-table-pass").setAttribute("unavailable", true)
 						}
 				} catch (error) {console.log(error)}
 			}
@@ -588,6 +616,9 @@ window.addEventListener("load", function() {
 							showToast({success: false, message: "no cards selected"})
 							return false
 						}
+
+					// reenable pass
+						ELEMENTS.gameTable.players[PLAYERID].querySelector("#game-table-pass").removeAttribute("unavailable")
 
 					// sendPost
 						SOCKET.send(JSON.stringify({
