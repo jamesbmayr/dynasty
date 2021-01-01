@@ -309,13 +309,21 @@
 		function saveSocket(REQUEST) {
 			try {
 				// on connect - save connection & fetch game
-					CONNECTIONS[REQUEST.session.id] = REQUEST.connection
-					sendSocketData({success: true, message: "connected", recipients: [REQUEST.session.id]})
+					if (!CONNECTIONS[REQUEST.session.id]) {
+						CONNECTIONS[REQUEST.session.id] = {}
+					}
+					CONNECTIONS[REQUEST.session.id][REQUEST.path[REQUEST.path.length - 1]] = REQUEST.connection					
+					sendSocketData({gameId: REQUEST.path[REQUEST.path.length - 1], success: true, message: "connected", recipients: [REQUEST.session.id]})
 					GAME.readOne(REQUEST, sendSocketData)
 
 				// on close
 					REQUEST.connection.on("close", function (reasonCode, description) {
-						delete CONNECTIONS[REQUEST.session.id]
+						if (CONNECTIONS[REQUEST.session.id]) {
+							delete CONNECTIONS[REQUEST.session.id][REQUEST.path[REQUEST.path.length - 1]]
+						}
+						if (!Object.keys(CONNECTIONS[REQUEST.session.id])) {
+							delete CONNECTIONS[REQUEST.session.id]
+						}
 					})
 
 				// on message
@@ -350,6 +358,8 @@
 							case "startGame":
 							case "selectCards":
 							case "selectPass":
+							case "selectStay":
+							case "selectQuit":
 								try {
 									GAME.updateOne(REQUEST, sendSocketData)
 								}
@@ -369,7 +379,7 @@
 		function sendSocketData(data) {
 			try {
 				// hunt down errors
-					if (!data.recipients) {
+					if (!data.recipients || !data.gameId) {
 						return
 					}
 					
@@ -378,14 +388,14 @@
 					delete data.recipients
 
 				// stringify
+					gameId = data.gameId
 					data = JSON.stringify(data)
 
 				// loop through recipients
 					for (var r in recipients) {
 						try {
-							var connection = CONNECTIONS[recipients[r]]
-							if (connection) {
-								connection.sendUTF(data)
+							if (CONNECTIONS[recipients[r]] && CONNECTIONS[recipients[r]][gameId]) { 
+								CONNECTIONS[recipients[r]][gameId].sendUTF(data)
 							}
 						}
 						catch (error) {

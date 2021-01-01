@@ -41,7 +41,8 @@ window.addEventListener("load", function() {
 
 		/* constants */
 			var CONSTANTS = {
-				circle: 360
+				circle: 360,
+				hasClicked: false
 			}
 
 		/* ids */
@@ -62,7 +63,8 @@ window.addEventListener("load", function() {
 					players: {
 						element: document.querySelector("#game-table-players")
 					}
-				}
+				},
+				audio: document.querySelector("#audio")
 			}
 
 	/*** tools ***/
@@ -238,6 +240,27 @@ window.addEventListener("load", function() {
 									playButton.innerText = "play"
 									playButton.addEventListener(TRIGGERS.click, selectCards)
 								playerElement.appendChild(playButton)
+
+							// stay
+								var stayButton = document.createElement("button")
+									stayButton.className = "player-button"
+									stayButton.id = "game-table-stay"
+									stayButton.innerText = "stay"
+									stayButton.addEventListener(TRIGGERS.click, selectStay)
+								playerElement.appendChild(stayButton)
+
+							// quit
+								var quitButton = document.createElement("button")
+									quitButton.className = "player-button"
+									quitButton.id = "game-table-quit"
+									quitButton.innerText = "quit"
+									quitButton.addEventListener(TRIGGERS.click, selectQuit)
+								playerElement.appendChild(quitButton)
+						}
+
+					// not self
+						else {
+							playerElement.addEventListener(TRIGGERS.click, selectPlayer)
 						}
 
 					// cards
@@ -347,6 +370,14 @@ window.addEventListener("load", function() {
 							ELEMENTS.gameTable.element.removeAttribute("taxation")
 						}
 
+					// in between
+						if (status.inBetween) {
+							ELEMENTS.gameTable.element.setAttribute("inBetween", true)
+						}
+						else {
+							ELEMENTS.gameTable.element.removeAttribute("inBetween")
+						}
+
 					// pile
 						displayPile(pile)
 
@@ -432,6 +463,16 @@ window.addEventListener("load", function() {
 		/* displayPlayers */
 			function displayPlayers(players) {
 				try {
+					// remove players who have left
+						var playerElements = Array.from(ELEMENTS.gameTable.players.element.querySelectorAll(".player"))
+						if (playerElements && playerElements.length) {
+							for (var i in playerElements) {
+								if (!players[playerElements[i].id.replace("game-table-player-", "")]) {
+									playerElements[i].remove()
+								}
+							}
+						}
+
 					// display individuals
 						for (var i in players) {
 							displayPlayer(players[i])
@@ -497,8 +538,22 @@ window.addEventListener("load", function() {
 							playerElement.removeAttribute("isTaxation")
 						}
 
+					// highlight if this player is still deciding
+						if (player.stillDeciding) {
+							playerElement.setAttribute("stillDeciding", true)
+						}
+						else {
+							playerElement.removeAttribute("stillDeciding")
+						}
+
 					// highlight if it is this player's turn
 						if (!player.taxationPending && player.isTurn) {
+							// chime on own turn
+								if (PLAYERID && player.id == PLAYERID && !playerElement.getAttribute("isTurn") && CONSTANTS.hasClicked) {
+									ELEMENTS.audio.load()
+									ELEMENTS.audio.play()
+								}
+
 							playerElement.setAttribute("isTurn", true)
 						}
 						else {
@@ -506,7 +561,7 @@ window.addEventListener("load", function() {
 						}
 
 					// lowlight if this player is finished
-						if (!player.cards.length) {
+						if (!player.cards.length && !player.stillDeciding) {
 							playerElement.setAttribute("isDone", true)
 						}
 						else {
@@ -541,6 +596,9 @@ window.addEventListener("load", function() {
 			ELEMENTS.start.form.addEventListener(window.TRIGGERS.submit, startGame)
 			function startGame(event) {
 				try {
+					// clicked
+						if (!CONSTANTS.hasClicked) { CONSTANTS.hasClicked = true }
+
 					// not a player
 						if (!PLAYERID) {
 							return false
@@ -553,9 +611,38 @@ window.addEventListener("load", function() {
 				} catch (error) {console.log(error)}
 			}
 
+		/* selectPlayer */
+			function selectPlayer(event) {
+				try {
+					// clicked
+						if (!CONSTANTS.hasClicked) { CONSTANTS.hasClicked = true }
+
+					// get player
+						var playerElement = event.target.className == "player" ? event.target : event.target.closest(".player:not(.self)")
+						if (!playerElement) {
+							return false
+						}
+
+					// toggle
+						if (playerElement.getAttribute("onTop")) {
+							playerElement.removeAttribute("onTop")
+						}
+						else {
+							var playerElements = Array.from(ELEMENTS.gameTable.players.element.querySelectorAll(".player"))
+							for (var i in playerElements) {
+								playerElements[i].removeAttribute("onTop")
+							}
+							playerElement.setAttribute("onTop", true)
+						}
+				} catch (error) {console.log(error)}
+			}
+
 		/* selectPass */
 			function selectPass(event) {
 				try {
+					// clicked
+						if (!CONSTANTS.hasClicked) { CONSTANTS.hasClicked = true }
+
 					// not a player
 						if (!PLAYERID) {
 							return false
@@ -571,6 +658,9 @@ window.addEventListener("load", function() {
 		/* selectCard */
 			function selectCard(event) {
 				try {
+					// clicked
+						if (!CONSTANTS.hasClicked) { CONSTANTS.hasClicked = true }
+
 					// not a player
 						if (!PLAYERID) {
 							return false
@@ -600,6 +690,9 @@ window.addEventListener("load", function() {
 		/* selectCards */
 			function selectCards(event) {
 				try {
+					// clicked
+						if (!CONSTANTS.hasClicked) { CONSTANTS.hasClicked = true }
+
 					// not a player
 						if (!PLAYERID) {
 							return false
@@ -624,6 +717,42 @@ window.addEventListener("load", function() {
 						SOCKET.send(JSON.stringify({
 							action: "selectCards",
 							selectedCardIds: ids,
+						}))
+				} catch (error) {console.log(error)}
+			}
+
+		/* selectStay */
+			function selectStay(event) {
+				try {
+					// clicked
+						if (!CONSTANTS.hasClicked) { CONSTANTS.hasClicked = true }
+
+					// not a player
+						if (!PLAYERID) {
+							return false
+						}
+
+					// sendPost
+						SOCKET.send(JSON.stringify({
+							action: "selectStay"
+						}))
+				} catch (error) {console.log(error)}
+			}
+
+		/* selectQuit */
+			function selectQuit(event) {
+				try {
+					// clicked
+						if (!CONSTANTS.hasClicked) { CONSTANTS.hasClicked = true }
+
+					// not a player
+						if (!PLAYERID) {
+							return false
+						}
+
+					// sendPost
+						SOCKET.send(JSON.stringify({
+							action: "selectQuit"
 						}))
 				} catch (error) {console.log(error)}
 			}

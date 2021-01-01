@@ -21,6 +21,7 @@
 
 					var game = CORE.getSchema("game")
 						game.players[player.id] = player
+						game.status.messages.push({id: CORE.generateRandom(), message: game.players[player.id].name + " creates the game"})
 
 				// query
 					var query = CORE.getSchema("query")
@@ -98,8 +99,8 @@
 							}
 
 						// already started
-							if (game.status && game.status.startTime) {
-								callback({success: false, message: "already started"})
+							if (game.status && game.status.startTime && !game.status.inBetween) {
+								callback({success: false, message: "game in progress; join between rounds"})
 								return
 							}
 
@@ -124,6 +125,13 @@
 
 						// add to game
 							game.players[player.id] = player
+							game.status.messages.push({id: CORE.generateRandom(), message: game.players[player.id].name + " joins the game"})
+
+						// add to waiting (between rounds)
+							if (game.status.inBetween) {
+								var midPosition = Math.ceil(Object.keys(game.players).length / 2) - 1
+								game.status.waiting.splice(midPosition, 0, player.id)
+							}
 
 						// query
 							game.updated = new Date().getTime()
@@ -176,7 +184,7 @@
 					CORE.accessDatabase(query, function(results) {
 						// not found
 							if (!results.success) {
-								callback({success: false, message: "no game found", location: "../../../../", recipients: [REQUEST.session.id]})
+								callback({gameId: gameId, success: false, message: "no game found", location: "../../../../", recipients: [REQUEST.session.id]})
 								return
 							}
 
@@ -193,17 +201,17 @@
 							if (playerId) {
 								// all players
 									for (var i in game.players) {
-										callback({success: true, message: null, playerId: i, game: sanitizeGame(game, i), recipients: [game.players[i].sessionId]})
+										callback({gameId: game.id, success: true, message: null, playerId: i, game: sanitizeGame(game, i), recipients: [game.players[i].sessionId]})
 									}
 
 								// spectators
-									callback({success: true, message: null, game: sanitizeGame(game, null), recipients: Object.keys(game.spectators)})
+									callback({gameId: game.id, success: true, message: null, game: sanitizeGame(game, null), recipients: Object.keys(game.spectators)})
 								return
 							}
 
 						// existing spectator
 							if (game.spectators[REQUEST.session.id]) {
-								callback({success: true, message: "now observing the game", playerId: null, game: sanitizeGame(game, null), recipients: [REQUEST.session.id]})
+								callback({gameId: game.id, success: true, message: "now observing the game", playerId: null, game: sanitizeGame(game, null), recipients: [REQUEST.session.id]})
 								return
 							}
 
@@ -223,19 +231,20 @@
 								// update
 									CORE.accessDatabase(query, function(results) {
 										if (!results.success) {
+											results.gameId = game.id
 											callback(results)
 											return
 										}
 
 										// for this spectator
-											callback({success: true, message: "now observing the game", playerId: null, game: sanitizeGame(game, null), recipients: [REQUEST.session.id]})
+											callback({gameId: game.id, success: true, message: "now observing the game", playerId: null, game: sanitizeGame(game, null), recipients: [REQUEST.session.id]})
 									})
 							}
 					})
 			}
 			catch (error) {
 				CORE.logError(error)
-				callback({success: false, message: "unable to " + arguments.callee.name})
+				callback({gameId: REQUEST.path[REQUEST.path.length - 1], success: false, message: "unable to " + arguments.callee.name})
 			}
 		}
 
@@ -247,13 +256,13 @@
 				// game id
 					var gameId = REQUEST.path[REQUEST.path.length - 1]
 					if (!gameId || gameId.length !== 4) {
-						callback({success: false, message: "invalid game id", recipients: [REQUEST.session.id]})
+						callback({gameId: gameId, success: false, message: "invalid game id", recipients: [REQUEST.session.id]})
 						return
 					}
 
 				// action
 					if (!REQUEST.post || !REQUEST.post.action) {
-						callback({success: false, message: "missing update action", recipients: [REQUEST.session.id]})
+						callback({gameId: gameId, success: false, message: "missing update action", recipients: [REQUEST.session.id]})
 						return
 					}
 
@@ -267,6 +276,7 @@
 					CORE.accessDatabase(query, function(results) {
 						if (!results.success) {
 							results.recipients = [REQUEST.session.id]
+							results.gameId = gameId
 							callback(results)
 							return
 						}
@@ -274,13 +284,13 @@
 						// not a player?
 							var game = results.documents[0]
 							if (!Object.keys(game.players).find(function(p) { return game.players[p].sessionId == REQUEST.session.id })) {
-								callback({success: false, message: "not a player", recipients: [REQUEST.session.id]})
+								callback({gameId: gameId, success: false, message: "not a player", recipients: [REQUEST.session.id]})
 								return
 							}
 
 						// already ended?
 							if (game.status && game.status.endTime) {
-								callback({success: false, message: "game already ended", recipients: [REQUEST.session.id]})
+								callback({gameId: gameId, success: false, message: "game already ended", recipients: [REQUEST.session.id]})
 								return
 							}
 
@@ -297,15 +307,23 @@
 								selectCards(REQUEST, game, callback)
 								return
 							}
+							else if (REQUEST.post.action == "selectStay") {
+								selectStay(REQUEST, game, callback)
+								return
+							}
+							else if (REQUEST.post.action == "selectQuit") {
+								selectQuit(REQUEST, game, callback)
+								return
+							}
 							else {
-								callback({success: false, message: "invalid update action: " + REQUEST.post.action, recipients: [REQUEST.session.id]})
+								callback({gameId: gameId, success: false, message: "invalid update action: " + REQUEST.post.action, recipients: [REQUEST.session.id]})
 								return
 							}
 					})
 			}
 			catch (error) {
 				CORE.logError(error)
-				callback({success: false, message: "unable to " + arguments.callee.name})
+				callback({gameId: REQUEST.path[REQUEST.path.length - 1], success: false, message: "unable to " + arguments.callee.name})
 			}
 		}
 
@@ -315,14 +333,14 @@
 			try {
 				// already started?
 					if (game.startTime) {
-						callback({success: false, message: "game already started", recipients: [REQUEST.session.id]})
+						callback({gameId: game.id, success: false, message: "game already started", recipients: [REQUEST.session.id]})
 						return
 					}
 
 				// too few players
 					var playerIds = Object.keys(game.players)
 					if (playerIds.length < CORE.getAsset("constants").minimumPlayers) {
-						callback({success: false, message: "game requires at least " + CORE.getAsset("constants").minimumPlayers + " players", recipients: [REQUEST.session.id]})
+						callback({gameId: game.id, success: false, message: "game requires at least " + CORE.getAsset("constants").minimumPlayers + " players", recipients: [REQUEST.session.id]})
 						return
 					}
 
@@ -348,22 +366,23 @@
 				// update
 					CORE.accessDatabase(query, function(results) {
 						if (!results.success) {
+							results.gameId = game.id
 							callback(results)
 							return
 						}
 
 						// all players
 							for (var i in game.players) {
-								callback({success: true, message: null, game: sanitizeGame(game, i), recipients: [game.players[i].sessionId]})
+								callback({gameId: game.id, success: true, message: null, game: sanitizeGame(game, i), recipients: [game.players[i].sessionId]})
 							}
 						
 						// spectators
-							callback({success: true, message: null, game: sanitizeGame(game, null), recipients: Object.keys(game.spectators)})
+							callback({gameId: game.id, success: true, message: null, game: sanitizeGame(game, null), recipients: Object.keys(game.spectators)})
 					})
 			}
 			catch (error) {
 				CORE.logError(error)
-				callback({success: false, message: "unable to " + arguments.callee.name})
+				callback({gameId: REQUEST.path[REQUEST.path.length - 1], success: false, message: "unable to " + arguments.callee.name})
 			}
 		}
 
@@ -373,7 +392,7 @@
 			try {
 				// not started?
 					if (!game.status.startTime) {
-						callback({success: false, message: "game not started", recipients: [REQUEST.session.id]})
+						callback({gameId: game.id, success: false, message: "game not started", recipients: [REQUEST.session.id]})
 						return
 					}
 
@@ -385,19 +404,19 @@
 
 				// not your turn
 					if (game.status.currentTurn !== thisPlayerId && !game.status.taxation) {
-						callback({success: false, message: "not your turn", recipients: [REQUEST.session.id]})
+						callback({gameId: game.id, success: false, message: "not your turn", recipients: [REQUEST.session.id]})
 						return
 					}
 
 				// not part of taxation
 					if (game.status.taxation && !game.players[thisPlayerId].taxationPending) {
-						callback({success: false, message: "wait for all players to finish taxation", recipients: [REQUEST.session.id]})
+						callback({gameId: game.id, success: false, message: "wait for all players to finish taxation", recipients: [REQUEST.session.id]})
 						return
 					}
 
 				// no cards
 					if (!REQUEST.post.selectedCardIds || !REQUEST.post.selectedCardIds.length) {
-						callback({success: false, message: "no cards selected", recipients: [REQUEST.session.id]})
+						callback({gameId: game.id, success: false, message: "no cards selected", recipients: [REQUEST.session.id]})
 						return
 					}
 					
@@ -406,7 +425,7 @@
 					for (var i in REQUEST.post.selectedCardIds) {
 						var card = game.players[thisPlayerId].cards.find(function(c) { return c.id == REQUEST.post.selectedCardIds[i] })
 						if (!card) {
-							callback({success: false, message: "not your cards", recipients: [REQUEST.session.id]})
+							callback({gameId: game.id, success: false, message: "not your cards", recipients: [REQUEST.session.id]})
 							return
 						}
 
@@ -415,7 +434,7 @@
 
 				// incorrect taxation amount
 					if (game.status.taxation && game.players[thisPlayerId].taxationPending !== selectedCards.length) {
-						callback({success: false, message: "you must select " + game.players[thisPlayerId].taxationPending + " card(s)", recipients: [REQUEST.session.id]})
+						callback({gameId: game.id, success: false, message: "you must select " + game.players[thisPlayerId].taxationPending + " card(s)", recipients: [REQUEST.session.id]})
 						return
 					}
 
@@ -458,17 +477,18 @@
 						// update
 							CORE.accessDatabase(query, function(results) {
 								if (!results.success) {
+									results.gameId = game.id
 									callback(results)
 									return
 								}
 
 								// all players
 									for (var i in game.players) {
-										callback({success: true, message: null, game: sanitizeGame(game, i), recipients: [game.players[i].sessionId]})
+										callback({gameId: game.id, success: true, message: null, game: sanitizeGame(game, i), recipients: [game.players[i].sessionId]})
 									}
 
 								// spectators
-									callback({success: true, message: null, game: sanitizeGame(game, null), recipients: Object.keys(game.spectators)})
+									callback({gameId: game.id, success: true, message: null, game: sanitizeGame(game, null), recipients: Object.keys(game.spectators)})
 							})
 
 							return
@@ -489,7 +509,7 @@
 				// too many / few
 					var valueKeys = Object.keys(values)
 					if (!valueKeys.length || valueKeys.length > 2 || (valueKeys.length == 2 && !values["?"])) {
-						callback({success: false, message: "cards do not match", recipients: [REQUEST.session.id]})
+						callback({gameId: game.id, success: false, message: "cards do not match", recipients: [REQUEST.session.id]})
 						return
 					}
 
@@ -511,7 +531,7 @@
 					if (game.pile.length) {
 						var currentValue = game.pile[game.pile.length - 1].value == "?" ? game.pile[game.pile.length - 1].tempValue : game.pile[game.pile.length - 1].value
 						if (realValue >= currentValue) {
-							callback({success: false, message: "card value must be less than current value", recipients: [REQUEST.session.id]})
+							callback({gameId: game.id, success: false, message: "card value must be less than current value", recipients: [REQUEST.session.id]})
 							return
 						}
 					}
@@ -529,13 +549,14 @@
 							}
 						}
 						if (selectedCards.length !== quantity) {
-							callback({success: false, message: "selected card quantity must match previously played quantities", recipients: [REQUEST.session.id]})
+							callback({gameId: game.id, success: false, message: "selected card quantity must match previously played quantities", recipients: [REQUEST.session.id]})
 							return
 						}
 					}
 
 				// move cards
 					for (var i in selectedCards) {
+						game.status.toBePlayed[String(selectedCards[i].value)]--
 						game = moveCard(game, {cardId: selectedCards[i].id, fromId: thisPlayerId, toId: "pile"})
 					}
 
@@ -570,22 +591,23 @@
 				// update
 					CORE.accessDatabase(query, function(results) {
 						if (!results.success) {
+							results.gameId = game.id
 							callback(results)
 							return
 						}
 
 						// all players
 							for (var i in game.players) {
-								callback({success: true, message: null, game: sanitizeGame(game, i), recipients: [game.players[i].sessionId]})
+								callback({gameId: game.id, success: true, message: null, game: sanitizeGame(game, i), recipients: [game.players[i].sessionId]})
 							}
 
 						// spectators
-							callback({success: true, message: null, game: sanitizeGame(game, null), recipients: Object.keys(game.spectators)})
+							callback({gameId: game.id, success: true, message: null, game: sanitizeGame(game, null), recipients: Object.keys(game.spectators)})
 					})
 			}
 			catch (error) {
 				CORE.logError(error)
-				callback({success: false, message: "unable to " + arguments.callee.name})
+				callback({gameId: REQUEST.path[REQUEST.path.length - 1], success: false, message: "unable to " + arguments.callee.name})
 			}
 		}
 
@@ -595,7 +617,7 @@
 			try {
 				// not started?
 					if (!game.status.startTime) {
-						callback({success: false, message: "game not started", recipients: [REQUEST.session.id]})
+						callback({gameId: game.id, success: false, message: "game not started", recipients: [REQUEST.session.id]})
 						return
 					}
 
@@ -607,13 +629,13 @@
 
 				// not your turn
 					if (game.status.currentTurn !== thisPlayerId) {
-						callback({success: false, message: "not your turn", recipients: [REQUEST.session.id]})
+						callback({gameId: game.id, success: false, message: "not your turn", recipients: [REQUEST.session.id]})
 						return
 					}
 
 				// starting the pile
 					if (!game.pile.length) {
-						callback({success: false, message: "cannot pass when starting a round", recipients: [REQUEST.session.id]})
+						callback({gameId: game.id, success: false, message: "cannot pass when starting a round", recipients: [REQUEST.session.id]})
 						return
 					}
 
@@ -635,22 +657,154 @@
 				// update
 					CORE.accessDatabase(query, function(results) {
 						if (!results.success) {
+							results.gameId = game.id
 							callback(results)
 							return
 						}
 
 						// all players
 							for (var i in game.players) {
-								callback({success: true, message: null, game: sanitizeGame(game, i), recipients: [game.players[i].sessionId]})
+								callback({gameId: game.id, success: true, message: null, game: sanitizeGame(game, i), recipients: [game.players[i].sessionId]})
 							}
 
 						// spectators
-							callback({success: true, message: null, game: sanitizeGame(game, null), recipients: Object.keys(game.spectators)})
+							callback({gameId: game.id, success: true, message: null, game: sanitizeGame(game, null), recipients: Object.keys(game.spectators)})
 					})
 			}
 			catch (error) {
 				CORE.logError(error)
-				callback({success: false, message: "unable to " + arguments.callee.name})
+				callback({gameId: REQUEST.path[REQUEST.path.length - 1], success: false, message: "unable to " + arguments.callee.name})
+			}
+		}
+
+	/* selectStay */
+		module.exports.selectStay = selectStay
+		function selectStay(REQUEST, game, callback) {
+			try {
+				// not started?
+					if (!game.status.startTime) {
+						callback({gameId: game.id, success: false, message: "game not started", recipients: [REQUEST.session.id]})
+						return
+					}
+
+				// thisPlayer
+					var playerIds = Object.keys(game.players)
+					var thisPlayerId = playerIds.find(function(p) {
+						return game.players[p].sessionId == REQUEST.session.id
+					})
+
+				// update this player
+					game.players[thisPlayerId].stillDeciding = false
+					game.status.messages.push({id: CORE.generateRandom(), message: game.players[thisPlayerId].name + " stays in the game"})
+
+				// all players have decided --> next game
+					if (!playerIds.find(function(i) { return game.players[i].stillDeciding })) {
+						game = setNextGame(game)
+					}
+
+				// query
+					game.updated = new Date().getTime()
+					var query = CORE.getSchema("query")
+						query.collection = "games"
+						query.command = "update"
+						query.filters = {id: game.id}
+						query.document = game
+
+				// update
+					CORE.accessDatabase(query, function(results) {
+						if (!results.success) {
+							results.gameId = game.id
+							callback(results)
+							return
+						}
+
+						// all players
+							for (var i in game.players) {
+								callback({gameId: game.id, success: true, message: null, game: sanitizeGame(game, i), recipients: [game.players[i].sessionId]})
+							}
+
+						// spectators
+							callback({gameId: game.id, success: true, message: null, game: sanitizeGame(game, null), recipients: Object.keys(game.spectators)})
+					})
+			}
+			catch (error) {
+				CORE.logError(error)
+				callback({gameId: REQUEST.path[REQUEST.path.length - 1], success: false, message: "unable to " + arguments.callee.name})
+			}
+		}
+
+	/* selectQuit */
+		module.exports.selectQuit = selectQuit
+		function selectQuit(REQUEST, game, callback) {
+			try {
+				// not started?
+					if (!game.status.startTime) {
+						callback({gameId: game.id, success: false, message: "game not started", recipients: [REQUEST.session.id]})
+						return
+					}
+
+				// thisPlayer
+					var playerIds = Object.keys(game.players)
+					var thisPlayerId = playerIds.find(function(p) {
+						return game.players[p].sessionId == REQUEST.session.id
+					})
+
+				// removing would bring below minimum?
+					if (playerIds.length <= CORE.getAsset("constants").minimumPlayers) {
+						callback({gameId: game.id, success: false, message: "game requires at least " + CORE.getAsset("constants").minimumPlayers + " players", recipients: [REQUEST.session.id]})
+						return
+					}
+
+				// remove this player
+					var previousPosition = game.players[thisPlayerId].position
+					game.status.messages.push({id: CORE.generateRandom(), message: game.players[thisPlayerId].name + " leaves the game"})
+					game.status.waiting = game.status.waiting.filter(function(i) { return i !== thisPlayerId }) || []
+					delete game.players[thisPlayerId]
+
+				// update positions
+					for (var i in game.players) {
+						if (game.players[i].position > previousPosition) {
+							game.players[i].position--
+						}
+					}
+					
+				// all players have decided --> next game
+					var playerIds = Object.keys(game.players)
+					if (!playerIds.find(function(i) { return game.players[i].stillDeciding })) {
+						game = setNextGame(game)
+					}
+
+				// query
+					game.updated = new Date().getTime()
+					var query = CORE.getSchema("query")
+						query.collection = "games"
+						query.command = "update"
+						query.filters = {id: game.id}
+						query.document = game
+
+				// update
+					CORE.accessDatabase(query, function(results) {
+						if (!results.success) {
+							results.gameId = game.id
+							callback(results)
+							return
+						}
+
+						// all players
+							for (var i in game.players) {
+								callback({gameId: game.id, success: true, message: null, game: sanitizeGame(game, i), recipients: [game.players[i].sessionId]})
+							}
+
+						// spectators
+							callback({gameId: game.id, success: true, message: null, game: sanitizeGame(game, null), recipients: Object.keys(game.spectators)})
+
+						// refresh for this player
+							callback({gameId: game.id, success: true, message: "you left the game", location: "../game/" + game.id, recipients: [REQUEST.session.id]})
+					})
+			}
+			catch (error) {
+				CORE.logError(error)
+				callback({gameId: REQUEST.path[REQUEST.path.length - 1], success: false, message: "unable to " + arguments.callee.name})
 			}
 		}
 
@@ -769,6 +923,38 @@
 						return setNextRound(game)
 					}
 
+				// no more cards can be played
+					if (game.pile.length) {
+						var currentValue = game.pile[game.pile.length - 1].value == "?" ? String(game.pile[game.pile.length - 1].tempValue) : game.pile[game.pile.length - 1].value
+						var quantity = 0
+						var differentValue = false
+						while (quantity < game.pile.length && !differentValue) {
+							if (game.pile[game.pile.length - 1 - quantity].value == currentValue || game.pile[game.pile.length - 1 - quantity].tempValue == currentValue) {
+								quantity++
+							}
+							else {
+								differentValue = true
+							}
+						}
+
+						var remainingWilds = game.status.toBePlayed["?"] || 0
+						var moreCanBePlayed = false
+						for (var i = 1; i < Number(currentValue); i++) {
+							if (game.status.toBePlayed[String(i)] && (game.status.toBePlayed[String(i)] + remainingWilds >= quantity)) {
+								moreCanBePlayed = true
+								break
+							}
+						}
+
+						if (!moreCanBePlayed) {
+							for (var i in game.players) {
+								game.players[i].inPlay = false
+							}
+							game.status.messages.push({id: CORE.generateRandom(), message: "no more can be played on this pile"})
+							return game
+						}
+					}
+
 				// find next player
 					var nextPlayerId = null
 					while (!nextPlayerId) {
@@ -824,8 +1010,8 @@
 					}
 
 				// all players waiting?
-					if (game.status.waiting.length == Object.keys(game.players).length - 1) {
-						return setNextGame(game)
+					if (game.status.waiting.length >= Object.keys(game.players).length - 1) {
+						return setNextInBetween(game)
 					}
 
 				// reset who's in play
@@ -836,7 +1022,9 @@
 					}
 
 				// set turn to lastPlayed
-					game.players[game.status.currentTurn].isTurn = false
+					if (game.status.currentTurn) {
+						game.players[game.status.currentTurn].isTurn = false
+					}
 					game.status.currentTurn = game.status.lastPlayed
 					game.players[game.status.currentTurn].isTurn = true
 					game.status.lastPlayed = null
@@ -856,9 +1044,9 @@
 			}
 		}
 
-	/* setNextGame */
-		module.exports.setNextGame = setNextGame
-		function setNextGame(game) {
+	/* setNextInBetween */
+		module.exports.setNextInBetween = setNextInBetween
+		function setNextInBetween(game) {
 			try {
 				// move pile to discard
 					if (game.pile.length) {
@@ -867,12 +1055,18 @@
 						}
 					}
 
+				// unset turns
+					game.status.currentTurn = null
+					game.status.lastPlayed = null
+
 				// pity the straggler
 					for (var i in game.players) {
+						game.players[i].isTurn = false
+
 						if (game.players[i].cards.length) {
 							// move cards to discard
-								for (var j in game.players[i].cards) {
-									game = moveCard(game, {cardId: game.players[i].cards[j].id, fromId: i, toId: "discard"})
+								while (game.players[i].cards.length) {
+									game = moveCard(game, {cardId: game.players[i].cards[0].id, fromId: i, toId: "discard"})
 								}
 
 							// move to waiting
@@ -888,6 +1082,24 @@
 						game.draw = cloneCards
 					}
 
+				// set deciding
+					game.status.inBetween = true
+					for (var i in game.players) {
+						game.players[i].stillDeciding = true
+					}
+
+				// return game
+					return game
+			}
+			catch (error) {
+				CORE.logError(error)
+			}
+		}
+
+	/* setNextGame */
+		module.exports.setNextGame = setNextGame
+		function setNextGame(game) {
+			try {
 				// new turn order
 					for (var i = 0; i < game.status.waiting.length; i++) {
 						game.players[game.status.waiting[i]].position = i
@@ -911,6 +1123,9 @@
 							position = 0
 						}
 					}
+
+				// to be played
+					game.status.toBePlayed = CORE.getAsset("constants").cardCounts
 
 				// update game count
 					game.status.game++

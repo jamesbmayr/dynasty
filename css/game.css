@@ -124,7 +124,13 @@
 			text-align: center;
 			height: calc(var(--card-size) * 4);
 			width: calc(var(--card-size) * 4);
-			z-index: 1;
+			z-index: 0;
+		}
+
+		@media screen and (max-width: 800px) {
+			#game-table-center {
+				height: calc(var(--card-size) * 3);
+			}
 		}
 
 	/* pile */
@@ -167,8 +173,14 @@
 			overflow-x: hidden;
 			overflow-y: scroll;
 			text-align: center;
-			z-index: 1;
+			z-index: 0;
 			scroll-behavior: smooth;
+		}
+
+		@media screen and (max-width: 800px) {
+			#game-table-messages {
+				height: calc(var(--card-size) * 1);
+			}
 		}
 
 		#game-table-messages .message {
@@ -208,6 +220,7 @@
 			transform: translateX(-50%) translateY(-50%);
 			height: 100%;
 			width: 100%;
+			pointer-events: none;
 		}
 
 		/* player */
@@ -221,6 +234,7 @@
 				background-color: var(--medium-gray);
 				box-shadow: 0 0 var(--shadow-size) var(--dark-gray);
 				transition: var(--transition-time);
+				pointer-events: all;
 			}
 
 			.player:not(.self) {
@@ -229,8 +243,14 @@
 				width: calc(3 * (var(--card-size) + 2 * var(--small-gap-size)));
 			}
 
+			.player:not(.self)[onTop=true] {
+				z-index: 10000 !important;
+				transform: translateX(-50%) translateY(-50%) rotate(0deg) !important;
+			}
+
 			.player.self {
-				z-index: 100;
+				position: fixed;
+				z-index: 1000;
 				bottom: 0;
 				left: 0;
 				width: calc(100% - 2 * var(--border-size));
@@ -238,7 +258,8 @@
 				border-radius: var(--border-radius) var(--border-radius) 0 0;
 			}
 
-			.player[isTurn=true], .player[isTaxation=true] {
+			.player[isTurn=true], .player[isTaxation=true], .player[stillDeciding=true] {
+				opacity: 1;
 				border-color: var(--dark-gray);
 				background-color: var(--dark-gray);
 				box-shadow: 0 0 0 var(--border-size) var(--dark-gray) !important;
@@ -263,7 +284,7 @@
 				transition: var(--transition-time);
 			}
 
-			.player[isTurn=true] .player-name, .player[isTaxation=true] .player-name {
+			.player[isTurn=true] .player-name, .player[isTaxation=true] .player-name, .player[stillDeciding=true] .player-name {
 				background-color: var(--dark-gray);
 			}
 
@@ -344,10 +365,11 @@
 				margin-right: calc(var(--card-size) / -2);
 			}
 
-		/* play / send / pass */
+		/* play / send / pass / stay / quit */
 			.player-button {
 				position: absolute;
-				bottom: calc(var(--card-size) * 4 / 3);
+				bottom: calc(var(--card-size) + var(--large-gap-size));
+				margin: 0;
 				left: 50%;
 				width: calc(var(--card-size));
 				height: calc(var(--card-size) / 4 * 3);
@@ -355,13 +377,14 @@
 				transition: var(--transition-time);
 				opacity: 1;
 				z-index: 101;
+				pointer-events: all;
 			}
 
-			#game-table-play {
+			#game-table-play, #game-table-stay {
 				transform: translateX(-150%) translateY(-50%);
 			}
 
-			#game-table-pass {
+			#game-table-pass, #game-table-quit {
 				transform: translateX(50%) translateY(-50%);
 			}
 
@@ -381,6 +404,21 @@
 			}
 
 			.player:not([isTaxation=true]) #game-table-send {
+				opacity: 0;
+				pointer-events: none;
+			}
+
+			#game-table[inBetween=true] #game-table-play, #game-table[inBetween=true] #game-table-pass, #game-table[inBetween=true] #game-table-send, {
+				opacity: 0;
+				pointer-events: none;
+			}
+
+			#game-table:not([inBetween=true]) #game-table-stay, #game-table:not([inBetween=true]) #game-table-quit {
+				opacity: 0;
+				pointer-events: none;
+			}
+
+			.player:not([stillDeciding=true]) #game-table-stay, .player:not([stillDeciding=true]) #game-table-quit {
 				opacity: 0;
 				pointer-events: none;
 			}

@@ -227,6 +227,7 @@
 								isTurn: false,
 								monarchyCount: 0,
 								taxationPending: false,
+								stillDeciding: false,
 								cards: []
 							}
 						break
@@ -249,8 +250,10 @@
 									endTime: null, 
 									game: 0,
 									taxation: false,
+									inBetween: false,
 									currentTurn: null,
 									lastPlayed: null,
+									toBePlayed: getAsset("constants").cardCounts,
 									winner: null,
 									messages: [{id: 0, message: "waiting for players..."}],
 									waiting: []
