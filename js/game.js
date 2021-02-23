@@ -582,7 +582,9 @@ window.addEventListener("load", function() {
 					// display cards
 						if (PLAYERID && PLAYERID == player.id) {
 							player.cards = player.cards.sort(function(a, b) {
-								return (Number(a.value) || 0) - (Number(b.value) || 0)
+								if (a && b) {
+									return (Number(a.value) || 0) - (Number(b.value) || 0)
+								}
 							})
 						}	
 						for (var i in player.cards) {

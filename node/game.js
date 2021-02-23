@@ -131,6 +131,10 @@
 							if (game.status.inBetween) {
 								var midPosition = Math.ceil(Object.keys(game.players).length / 2) - 1
 								game.status.waiting.splice(midPosition, 0, player.id)
+
+								if (game.spectators[REQUEST.session.id]) {
+									delete game.spectators[REQUEST.session.id]
+								}
 							}
 
 						// query
