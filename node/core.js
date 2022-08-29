@@ -297,7 +297,7 @@
 									<meta property="og:title" content="Dynasty"/>
 									<meta property="og:url" content="https://jamesmayr.com/dynasty/"/>
 									<meta property="og:description" content="Dynasty is a multiplayer multi-round elimination card game by James Mayr"/>
-									<meta property="og:image" content="https://jamesmayr.com/dynasty/logo.png"/>
+									<meta property="og:image" content="https://jamesmayr.com/dynasty/banner.png"/>
 									<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0"/>`
 						break
 						case "fonts":
